@@ -6,48 +6,73 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iscirving.mvvmlogin.R
+import kotlinx.coroutines.launch
 
 @Composable
-fun LoginScreen() {
+fun LoginScreen(loginViewModel: LoginViewModel) {
     Box(
         Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Login(Modifier.align(Alignment.Center))
+        Login(loginViewModel, Modifier.align(Alignment.Center))
     }
 }
 
 @Composable
-fun Login(modifier: Modifier) {
-    Column(modifier = modifier) {
-        HeaderImage(Modifier.align((Alignment.CenterHorizontally)))
-        Spacer(modifier = Modifier.padding(16.dp))
-        EmailField()
-        Spacer(modifier = Modifier.padding(4.dp))
-        PasswordField()
-        Spacer(modifier = Modifier.padding(8.dp))
-        ForgotPassword(Modifier.align((Alignment.End)))
-        Spacer(modifier = Modifier.padding(16.dp))
-        LoginBtn()
+fun Login(loginViewModel: LoginViewModel, modifier: Modifier) {
+    val email: String by loginViewModel.email.observeAsState(initial = "")
+    val password: String by loginViewModel.password.observeAsState(initial = "")
+    val loginEnable: Boolean by loginViewModel.loginEnable.observeAsState(initial = false)
+    val isLoading: Boolean by loginViewModel.isLoading.observeAsState(initial = false)
+
+    val corrutineScope = rememberCoroutineScope()
+
+    if (isLoading) {
+        Box(Modifier.fillMaxSize()) {
+            CircularProgressIndicator(Modifier.align(Alignment.Center))
+        }
+    } else {
+        Column(modifier = modifier) {
+            HeaderImage(Modifier.align((Alignment.CenterHorizontally)))
+            Spacer(modifier = Modifier.padding(16.dp))
+            EmailField(
+                email
+            ) { loginViewModel.onLogingChanged(it, password) }
+            Spacer(modifier = Modifier.padding(4.dp))
+            PasswordField(password) {
+                loginViewModel.onLogingChanged(email, it)
+            }
+            Spacer(modifier = Modifier.padding(8.dp))
+            ForgotPassword(Modifier.align((Alignment.End)))
+            Spacer(modifier = Modifier.padding(16.dp))
+            LoginBtn(loginEnable) {
+                corrutineScope.launch {
+                    loginViewModel.onLogingSelected()
+                }
+            }
+        }
     }
 }
 
 @Composable
-fun LoginBtn() {
+fun LoginBtn(loginEnable: Boolean, onLogingSelected: () -> Unit) {
     Button(
-        onClick = {},
+        onClick = {
+            onLogingSelected()
+        },
+        enabled = loginEnable,
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp),
@@ -74,10 +99,12 @@ fun ForgotPassword(modifier: Modifier) {
 }
 
 @Composable
-fun PasswordField() {
+fun PasswordField(password: String, onTextFieldChanged: (String) -> Unit) {
     TextField(
-        value = "",
-        onValueChange = {},
+        value = password,
+        onValueChange = {
+            onTextFieldChanged(it)
+        },
         placeholder = {
             Text(text = "Email")
         },
@@ -94,14 +121,18 @@ fun PasswordField() {
     )
 }
 
-@Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun EmailField() {
-    // var email by remember { mutableSetOf("") }
+fun EmailField(email: String, onTextFieldChanged: (String) -> Unit) {
+    // var email by remember { mutableStateOf("") }
 
     TextField(
-        value = "",
-        onValueChange = {},
+        value = email,
+        /*onValueChange = {
+            email = it
+        },*/
+        onValueChange = {
+            onTextFieldChanged(it)
+        },
         modifier = Modifier.fillMaxWidth(),
         placeholder = {
             Text(text = "Email")
